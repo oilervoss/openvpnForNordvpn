@@ -1,4 +1,18 @@
-### Custom scripts for Nordvpn at OpenWRT
+## NordPN PROMO CODE
+### High quality VPN service with a huge discount
+- No Logs Policy
+- P2P Allowed
+- Onion Over VPN
+- Unlimited Bandwidth
+- Double Encryption
+
+Use my referal link (https://ref.nordvpn.com/?id=69780735) and one of the promo codes:
+- [**2YSpecial2017**](https://ref.nordvpn.com/?id=69780735) for 2 year plan **$3.29** per month
+- [**70off**](https://ref.nordvpn.com/?id=69780735) for 1 year plan **$4.00** per month
+
+----
+
+## Custom scripts for Nordvpn at OpenWRT
 
 [NordVPN](https://ref.nordvpn.com/?id=69780735): High level VPN service 
 
@@ -14,3 +28,4 @@ opkg install openvpn-openssl
 opkg install ip-full
 opkg install install luci-app-openvpn
 ```
+
