@@ -1,0 +1,27 @@
+# /etc/firewall.user
+
+# This file is interpreted as shell script.
+# Put your custom iptables rules here, they will
+# be executed with each firewall (re-)start.
+
+# Internal uci firewall chains are flushed and recreated on reload, so
+# put custom rules into the root chains e.g. INPUT or FORWARD or into the
+# special user chains, e.g. input_wan_rule or postrouting_lan_rule.
+
+######################################################
+
+
+# To prevent traffic leakage in case VPN-tunnel drops
+# https://nordvpn.com/tutorials/openwrt/openvpn/
+
+if (ip a s tun0 up); then
+	touch /etc/config/openvpn.lock
+
+	if (iptables -C forward_rule -j REJECT); then
+		iptables -D forwarding_rule -j REJECT
+	fi
+fi
+
+if [ -e /etc/config/openvpn.lock ] && (! ip a s tun0 up) && (! iptables -C forwarding_rule -j REJECT); then
+        iptables -I forwarding_rule -j REJECT
+fi
