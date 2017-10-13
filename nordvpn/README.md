@@ -8,8 +8,8 @@
 ---
 
 Use my referal link (https://ref.nordvpn.com/?id=69780735) and one of the promo codes:
-- [**2YSpecial2017**](https://ref.nordvpn.com/?id=69780735&2year&coupon=2YDeal2017) for 2 year plan **$3.29** per month
-- [**70off**](https://ref.nordvpn.com/?id=69780735&1year&coupon=70off) for 1 year plan **$4.00** per month
+- [**2YSpecial2017**](https://ref.nordvpn.com/?id=69780735) for 2 year plan **$3.29** per month
+- [**70off**](https://ref.nordvpn.com/?id=69780735) for 1 year plan **$4.00** per month
 ----
 
 ## Custom scripts for Nordvpn at OpenWRT
