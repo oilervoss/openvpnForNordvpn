@@ -1,0 +1,6 @@
+# Put your custom commands here that should be executed once
+# the system init finished. By default this file does nothing.
+
+rm -f /etc/openvpn/_openvpn.lock &
+
+exit 0

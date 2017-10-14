@@ -1,0 +1,7 @@
+
+config openvpn 'Nordvpn'
+	option config '/etc/openvpn/_nordvpn.ovpn'
+	option enabled '1'
+	option auth_nocache '1'
+	option ping_exit '60'
+
