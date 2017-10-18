@@ -1,3 +1,0 @@
-config interface 'ovpn'
-	option proto 'none'
-	option ifname 'tun0'
