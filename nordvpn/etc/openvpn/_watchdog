@@ -1,0 +1,45 @@
+#!/bin/sh
+# /etc/openvpn/reconnect.sh
+
+sleep 60
+logger "Watchdog started"
+TESTE=0 
+while true; do
+	
+	if [ -e /etc/openvpn/_openvpn.lock ] && ( ! ip a s tun0 up ); then
+		/etc/init.d/openvpn restart
+		let TESTE+=10
+		logger "Watchdog: tun0 is down. openvpn process restarted"
+	fi
+
+        t=$(ping -c 10 8.8.8.8 | sed -n 's/.*transmitted, \+\([0-9]\+\).*/\1/p')
+	echo PING $t
+
+	if [ "$t" -eq 0 ]; then
+		/etc/init.d/firewall restart
+		let TESTE+=10
+	        t=$(ping -c 10 8.8.8.8 | sed -n 's/.*transmitted, \+\([0-9]\+\).*/\1/p')
+		logger "Watchdog: 8.8.8.8 could'nt be pingged. firewall process restarted. New ping had $t0% of sucess"
+	fi
+	
+	if [ "$t" -eq 0 ]; then
+		/etc/init.d/network restart
+		let TESTE+=10
+		logger "Watchdog: network process restarted"
+	else
+		TESTE=0
+		sleep 120
+	fi
+
+	if [ "$TESTE" -ne 0 ]; then
+		sleep $TESTE
+	fi
+
+	if [ "$TESTE" -ge 120 ]; then
+		TESTE=0
+		logger "Watchdog: all conections failed four times. Sleeping 10 minutes"
+		sleep 600
+	fi
+
+done
+
