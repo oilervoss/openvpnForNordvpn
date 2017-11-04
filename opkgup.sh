@@ -1,5 +1,6 @@
 #!/bin/sh
 #
+# This will update opkg and upgrade the found upgradable packages 
 
 echo -e "\n\e[36mI will update opkg now \e[32m\n"
 
@@ -7,18 +8,19 @@ opkg update
 
 LIST=`opkg list-upgradable | sed -n 's/\([^ ]*\) -.*/\1/p'`
 
-if [ "$LIST" = "" ] || [ $? -ne 0  ]; then
-	echo -e "\n\e[31mNothing to do.\e[0m\n\n"
-	exit
+if [ $? -ne 0 -o "$LIST" = "" ]; then
+        echo -e "\n\e[0;31mNothing to do.\e[0m\n\n"
+        exit
 fi
 
-echo -e "\e[36m\e[1mI've found upgradable the following:\e[21m\n$LIST"
+echo -e "\e[36;1mI've found the following as upgradable:\e[0;32m\n$LIST"
 
-echo -en "\e[36mAre you shure to upgrade now (y/\e[4mn\e[24m) \e[5m?\e[0m "
+echo -en "\e[0;36mAre you sure to upgrade them now (y/\e[4mn\e[0;36m) \e[5m?\e[0m "
 read -n 1 OPT
 echo
 if [ "$OPT" = "y" ]; then
-	opkg upgrade `echo $LIST|tr '\n' ' '`
+        echo -e "\n\e[0;36;1mI'm going to upgrade the packages now\n\e[0;32m"
+        opkg upgrade `echo $LIST|tr '\n' ' '`
 fi
 
-
+echo -e "\e[0m"
