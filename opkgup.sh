@@ -6,7 +6,7 @@ echo -e "\n\e[36mI will update opkg now \e[32m\n"
 
 opkg update
 
-LIST=`opkg list-upgradable | sed -n 's/\([^ ]*\) -.*/\1/p'`
+LIST=`opkg list-upgradable | cut -f 1 -d ' '`
 
 if [ $? -ne 0 -o "$LIST" = "" ]; then
         echo -e "\n\e[0;31mNothing to do.\e[0m\n\n"
