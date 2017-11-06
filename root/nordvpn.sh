@@ -2,11 +2,17 @@
 #
 # This script provides a interface to choose a nordvpn server
 
-echo -ne "\e[36mThat is the current setting:  \e[1m"
-ls -l /etc/openvpn/_nordvpn.ovpn|sed 's/.*\/etc\/openvpn\/\(.*\)\.ovpn$/\1/'
-echo -e "\e[0m"
+LIST=$( ls -l /etc/openvpn/nordvpn.ovpn | sed 's/.*\/etc\/openvpn\/nordvpn\/\(.*\)\.ovpn$/\1/' 1>/dev/null )
+if [ -z "$LIST" ]; then
+	ln -sf /etc/openvpn/nordvpn.ovpn /etc/openvpn/nordvpn/us1.tcp.ovpn
+	if [ $? != 0 ]; then
+		exit $?
+	fi
+fi
 
-FILES=$(ls -1 /etc/openvpn/*.ovpn|sed -n 's/^\/etc\/openvpn\/\(.*\)\.ovpn$/\1/p')
+echo -e "\n\e[36mThis is the current setting: \e[1m${CURRENT}\e[0m"
+
+NORDFILES=$( ls -1 /etc/openvpn/nordvpn/*.ovpn | sed -n 's/^\/etc\/openvpn\/nordvpn\/\(.*\)\.ovpn$/\1/p' )
 
 while true; do
 	echo
@@ -14,9 +20,10 @@ while true; do
 	echo "xd = Double tunnel"
 	echo "xt = Tor tunnel"
 	echo "xo = Onion tunnel"
-	echo " = Start vpn with current setting"
+	echo "= Start vpn with current setting"
 	
-	ls /etc/openvpn/ | sed -n 's/\(^..\).*/\1/;/^_.*/!p;/^x.*/!p'|uniq|sort|tr '\n' ' '
+	echo "$NORDFILES" | sed -n 's/\(^..\).*/\1/;/^x.*/!p'|uniq|sort|tr '\n' ' '
+
 #sed -n '/^[a-zA-Z]\{2\}[0-9]\{1,3\}.*/p;/^x.*/p'
 
 	echo
@@ -26,22 +33,22 @@ while true; do
 	if [ "$COUNTRY" = "" ]; then 
 		break
 	fi
-	
+
 	case $COUNTRY in
-		xd)
+		xd )
 			$COUNTRY=xDouble
 			;;
-		xt)
+		xt )
 			$COUNTRY=xTor 
 			;;
-		xo)		
+		xo )		
 			$COUNTRY=xOnion 
 			;;
 	esac
 	
-	CFILES=$(echo "$FILES"|sed -n "/$COUNTRY/p")
+	COUNTRYFILES=$( echo "$NORDFILES" | sed -n "/^$COUNTRY/p" )
 	
-	if [ ! -z "$CFILES" ]; then
+	if [ ! -z "$COUNTRYFILES" ]; then
 		echo -e "\e[32mI found it.\e[0m"
 		break
 	fi
@@ -50,43 +57,50 @@ while true; do
 
 done
 
-if [ "$COUNTRY" != "zz" ]; then
- 
+while [ ! -z "$COUNTRY" ]; do 
 	echo 
-	echo "$CFILES"|sed "s/$COUNTRY\(.*\)_\(tcp|udp\)/\1/"|tr '\n' '\t'
+	echo "$COUNTRYFILES" | sed "s/^$COUNTRY\(.*\)_\(tcp|udp\)/\1/" | sort | tr '\n' ' '
 	echo
 	read -p "Choose a server: " SERVER
 	echo
 	read -n 1 -p "Choose tcp or udp: " PROTOCOL
 	echo	
-	if [ "$PROTOCOL" = "t" ] || [ "$PROTOCOL" = "T" ]; then
+
+	if [ "$PROTOCOL" = "t" ] || [ "$PROTOCOL" = "T" ] || [ "$COUNTRY" = "xOnion" ]; then
 		PROTOCOL=tcp
 	else
 		PROTOCOL=udp
 	fi
-	SFILES=$(echo "$CFILES"|sed -n "/$COUNTRY$SERVER\_$PROTOCOL/p")
-	if [ -z "$SFILES" ]; then
+
+	CHOSENFILE=$(echo "$COUNTRYFILES" | sed -n "/${COUNTRY}${SERVER}_${PROTOCOL}/p")
+
+	if [ -z "$CHOSENFILE" ]; then
 		echo -e "\e[1m\e[31mI didn't find any server.\e[0m"
 		exit 1
 	fi
-	T=$(echo $SFILES|sed '1d')
-	if [ ! -z "$T" ]; then
+	
+	if [ ! -z "$(echo $CHOSENFILE|sed '1d')" ]; then
 		echo -e "\e[1m\e[31mI found more than one server.\e[0m"
 		exit 1
 	fi
+
 	echo
-	echo -e "\e[1m\e[32mSetting to tunnel:\e[34m\e[5m $SFILES\e[0m"
+	echo -e "\e[1m\e[32mSetting to tunnel:\e[34m\e[5m $CHOSENFILE\e[0m"
 	echo
-	ln -sf /etc/openvpn/$SFILES.ovpn /etc/openvpn/_nordvpn.ovpn
-	ls -l /etc/openvpn/_nordvpn.ovpn|sed 's/.*\(_nordvpn.*$\)/\1/'
-fi
+	ln -sf /etc/openvpn/nordvpn/$COUNTRY$SERVER_$PROTOCOL.ovpn /etc/openvpn/nordvpn.ovpn
+	if [ $? -ne 0 ]; then
+		echo "Error"
+		exit $?
+	fi
+	ls -l /etc/openvpn/nordvpn.ovpn
+done
 
 if ( pgrep openvpn 1>/dev/null 2>&1 ); then
 	echo -e "\e[94mStopping old vpn.\e[0m"
 	/etc/init.d/openvpn stop
+	sleep 1
 fi
 echo -e "\e[34m\e[5mStarting new vpn.\e[0m"
-sleep 1
 /etc/init.d/openvpn start
 
 
