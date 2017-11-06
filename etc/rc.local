@@ -2,6 +2,7 @@
 # the system init finished. By default this file does nothing.
 
 rm -f /etc/openvpn/_openvpn.lock &
-/etc/openvpn/_watchdog &
+iptables -D forwarding_rule -j REJECT &
+/etc/openvpn/_watchdog.sh &
 
 exit 0

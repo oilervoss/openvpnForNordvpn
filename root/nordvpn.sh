@@ -11,26 +11,31 @@ FILES=$(ls -1 /etc/openvpn/*.ovpn|sed -n 's/^\/etc\/openvpn\/\(.*\)\.ovpn$/\1/p'
 while true; do
 	echo
 	echo "Select a country (2 small letters) or:"
-	echo "dd = Double tunnel"
-	echo "tt = Tor tunnel"
-	echo "oo = Onion tunnel"
-	echo "zz = Start vpn with current setting"
+	echo "xd = Double tunnel"
+	echo "xt = Tor tunnel"
+	echo "xo = Onion tunnel"
+	echo " = Start vpn with current setting"
+	
+	ls /etc/openvpn/ | sed -n 's/\(^..\).*/\1/;/^_.*/!p;/^x.*/!p'|uniq|sort|tr '\n' ' '
+#sed -n '/^[a-zA-Z]\{2\}[0-9]\{1,3\}.*/p;/^x.*/p'
+
+	echo
 	read -n 2 -p "Choose: " COUNTRY
 	echo
 	
-	if [ "$COUNTRY" = "zz" ]; then 
+	if [ "$COUNTRY" = "" ]; then 
 		break
 	fi
 	
 	case $COUNTRY in
-		dd)
-			$COUNTRY=Double
+		xd)
+			$COUNTRY=xDouble
 			;;
-		tt)
-			$COUNTRY=Tor 
+		xt)
+			$COUNTRY=xTor 
 			;;
-		oo)		
-			$COUNTRY=Onion 
+		xo)		
+			$COUNTRY=xOnion 
 			;;
 	esac
 	
