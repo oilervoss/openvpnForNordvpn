@@ -4,15 +4,7 @@
 
 # https://nordvpn.com/tutorials/openwrt/openvpn/
 
-if [ "$ACTION" = ifup ] && (route|grep tun0); then
-	touch /etc/openvpn/_openvpn.lock
-
-	if ( iptables -C forwarding_rule -j REJECT ); then
-		iptables -D forwarding_rule -j REJECT
-	fi
-fi
-
-if [ -e /etc/openvpn/_openvpn.lock ] && [ "$ACTION" = ifdown ] && (! route|grep tun0) && (! iptables -C forwarding_rule -j REJECT); then
-        iptables -I forwarding_rule -j REJECT
+if [ "$ACTION" = ifup ] -o [ "$ACTION" = ifdown ]; then
+	/etc/openvpn/preventleak.sh
 fi
 

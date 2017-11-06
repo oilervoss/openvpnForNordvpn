@@ -1,8 +1,8 @@
 # Put your custom commands here that should be executed once
 # the system init finished. By default this file does nothing.
 
-rm -f /etc/openvpn/_openvpn.lock &
+rm -f /etc/openvpn/openvpn.lock &
 iptables -D forwarding_rule -j REJECT &
-/etc/openvpn/_watchdog.sh &
+/etc/openvpn/watchdog.sh &
 
 exit 0

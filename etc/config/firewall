@@ -9,7 +9,7 @@ config defaults
 config include
 	option path '/etc/firewall.user'
 
-config zone
+config zone ovpnfw
 	option forward 'REJECT'
 	option network 'ovpn'
 	option output 'ACCEPT'
