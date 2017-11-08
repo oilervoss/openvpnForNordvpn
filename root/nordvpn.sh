@@ -2,8 +2,11 @@
 #
 # This script provides a interface to choose a nordvpn server
 
-CURRENT=$( ls -l /etc/openvpn/nordvpn.ovpn  2>/dev/null | sed -nr 's:.*/etc/openvpn/(.+\.ovpn -> )nordvpn/(.+)\.ovpn$:\1\2:p' )
-if [ -z "$LIST" ]; then
+CHOSENFILE=""
+
+CURRENT=$( ls -l /etc/openvpn/nordvpn.ovpn  2>/dev/null | sed -nr 's:.+-> .*nordvpn/(.+)\.ovpn$:\1:p' )
+
+if [ -z "$CURRENT" ]; then
 	ln -sf /etc/openvpn/nordvpn.ovpn /etc/openvpn/nordvpn/us1.tcp.ovpn
 	if [ $? != 0 ]; then
 		exit $?
@@ -12,17 +15,16 @@ fi
 
 echo -e "\n\e[36mThis is the current setting: \e[1m${CURRENT}\e[0m"
 
-NORDFILES=$( ls -1 /etc/openvpn/nordvpn/*.ovpn | sed -nr 's:/etc/openvpn/nordvpn/(.+)\.nordvpn\.com\.(tcp|udp)\.ovpn:\1.\2:p' )
+NORDFILES=$( ls -1 /etc/openvpn/nordvpn/*.ovpn | sed -nr 's:/etc/openvpn/nordvpn/(.+)\.ovpn:\1:p' )
 
-while true; do
+while [ -z "$CHOSENFILE" ]; do
 	echo
 	echo "Select a country (2 small letters) or:"
 	echo "xd = Double tunnel"
 	echo "xt = Tor tunnel"
 	echo "= Start vpn with current setting"
 
-	echo "$NORDFILES" | sed -nr 's:(^..).+:\1: ; :^x.+: !p' | uniq | sort | tr '\n' ' '
-
+	echo "$NORDFILES" | sed -nr -e 's:^(..).+:\1:' -e '/^x.+/ !p' | sort -u | tr '\n' ' '
 	echo
 	read -n 2 -p "Choose: " COUNTRY
 	echo
@@ -40,20 +42,18 @@ while true; do
 			;;
 	esac
 
-	COUNTRYFILES=$( echo "$NORDFILES" | sed -n ":^$COUNTRY:p" )
+	COUNTRYFILES=$( echo "$NORDFILES" | sed -n "/^$COUNTRY/p" )
 
-	if [ ! -z "$COUNTRYFILES" ]; then
-		echo -e "\e[32mI found it.\e[0m"
-		break
+	if [ -z "$COUNTRYFILES" ]; then
+		echo -e "\e[1m\e[31mI didn't find it.\e[0m"
+		continue
 	fi
 
-	echo -e "\e[1m\e[31mI didn't find it.\e[0m"
+	echo -e "\e[32mI found it.\e[0m"
 
-done
-
-while [ ! -z "$COUNTRY" ]; do
+while [ -z "$CHOSENFILE" ]; do
 	echo
-	echo "$COUNTRYFILES" | sed "s/^$COUNTRY\(.*\)_\(tcp|udp\)/\1/" | sort | tr '\n' ' '
+	echo "$COUNTRYFILES" | sed -nr "s:^$COUNTRY(.*).(tcp|udp):\1:p" | sort -nu | tr '\n' ' '
 	echo
 	read -p "Choose a server: " SERVER
 	echo
@@ -66,27 +66,31 @@ while [ ! -z "$COUNTRY" ]; do
 		PROTOCOL=udp
 	fi
 
-	CHOSENFILE=$(echo "$COUNTRYFILES" | sed -n "/${COUNTRY}${SERVER}_${PROTOCOL}/p")
+	CHOSENFILE=$(echo "$COUNTRYFILES" | sed -n "/${COUNTRY}${SERVER}.${PROTOCOL}/p")
 
 	if [ -z "$CHOSENFILE" ]; then
 		echo -e "\e[1m\e[31mI didn't find any server.\e[0m"
-		exit 1
+		break
 	fi
 	
 	if [ ! -z "$(echo $CHOSENFILE|sed '1d')" ]; then
 		echo -e "\e[1m\e[31mI found more than one server.\e[0m"
-		exit 1
+		CHOSENFILE=""
+		break
 	fi
 
 	echo
-	echo -e "\e[1m\e[32mSetting to tunnel:\e[34m\e[5m $CHOSENFILE\e[0m"
+	echo -e "\e[1m\e[32mSetting to tunnel: \e[5m$CHOSENFILE\e[0m"
 	echo
-	ln -sf /etc/openvpn/nordvpn/$COUNTRY$SERVER_$PROTOCOL.ovpn /etc/openvpn/nordvpn.ovpn
+	ln -sf /etc/openvpn/nordvpn/$COUNTRY$SERVER.$PROTOCOL.ovpn /etc/openvpn/nordvpn.ovpn
 	if [ $? -ne 0 ]; then
 		echo "Error"
 		exit $?
 	fi
-	ls -l /etc/openvpn/nordvpn.ovpn
+	ls -l /etc/openvpn/nordvpn.ovpn | sed -nr 's:.+(/etc/.+->.+):\1:p'
+	break
+done
+
 done
 
 if ( pgrep openvpn 1>/dev/null 2>&1 ); then
