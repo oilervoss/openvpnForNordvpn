@@ -2,7 +2,7 @@
 #
 # This script provides a interface to choose a nordvpn server
 
-CURRENT=$( ls -l /etc/openvpn/nordvpn.ovpn  2>/dev/null | sed -r 's:.*/etc/openvpn/(.+\.ovpn -> )/etc/openvpn/(.+\.ovpn)$:\1:' )
+CURRENT=$( ls -l /etc/openvpn/nordvpn.ovpn  2>/dev/null | sed -nr 's:.*/etc/openvpn/(.+\.ovpn -> )nordvpn/(.+)\.ovpn$:\1\2:p' )
 if [ -z "$LIST" ]; then
 	ln -sf /etc/openvpn/nordvpn.ovpn /etc/openvpn/nordvpn/us1.tcp.ovpn
 	if [ $? != 0 ]; then
