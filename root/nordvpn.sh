@@ -2,7 +2,7 @@
 #
 # This script provides a interface to choose a nordvpn server
 
-LIST=$( ls -l /etc/openvpn/nordvpn.ovpn | sed 's/.*\/etc\/openvpn\/nordvpn\/\(.*\)\.ovpn$/\1/' 1>/dev/null )
+CURRENT=$( ls -l /etc/openvpn/nordvpn.ovpn  2>/dev/null | sed -r 's:.*/etc/openvpn/(.+\.ovpn -> )/etc/openvpn/(.+\.ovpn)$:\1:' )
 if [ -z "$LIST" ]; then
 	ln -sf /etc/openvpn/nordvpn.ovpn /etc/openvpn/nordvpn/us1.tcp.ovpn
 	if [ $? != 0 ]; then
@@ -12,25 +12,22 @@ fi
 
 echo -e "\n\e[36mThis is the current setting: \e[1m${CURRENT}\e[0m"
 
-NORDFILES=$( ls -1 /etc/openvpn/nordvpn/*.ovpn | sed -n 's/^\/etc\/openvpn\/nordvpn\/\(.*\)\.ovpn$/\1/p' )
+NORDFILES=$( ls -1 /etc/openvpn/nordvpn/*.ovpn | sed -nr 's:/etc/openvpn/nordvpn/(.+)\.nordvpn\.com\.(tcp|udp)\.ovpn:\1.\2:p' )
 
 while true; do
 	echo
 	echo "Select a country (2 small letters) or:"
 	echo "xd = Double tunnel"
 	echo "xt = Tor tunnel"
-	echo "xo = Onion tunnel"
 	echo "= Start vpn with current setting"
-	
-	echo "$NORDFILES" | sed -n 's/\(^..\).*/\1/;/^x.*/!p'|uniq|sort|tr '\n' ' '
 
-#sed -n '/^[a-zA-Z]\{2\}[0-9]\{1,3\}.*/p;/^x.*/p'
+	echo "$NORDFILES" | sed -nr 's:(^..).+:\1: ; :^x.+: !p' | uniq | sort | tr '\n' ' '
 
 	echo
 	read -n 2 -p "Choose: " COUNTRY
 	echo
-	
-	if [ "$COUNTRY" = "" ]; then 
+
+	if [ "$COUNTRY" = "" ]; then
 		break
 	fi
 
@@ -39,15 +36,12 @@ while true; do
 			$COUNTRY=xDouble
 			;;
 		xt )
-			$COUNTRY=xTor 
-			;;
-		xo )		
-			$COUNTRY=xOnion 
+			$COUNTRY=xTor
 			;;
 	esac
-	
-	COUNTRYFILES=$( echo "$NORDFILES" | sed -n "/^$COUNTRY/p" )
-	
+
+	COUNTRYFILES=$( echo "$NORDFILES" | sed -n ":^$COUNTRY:p" )
+
 	if [ ! -z "$COUNTRYFILES" ]; then
 		echo -e "\e[32mI found it.\e[0m"
 		break
@@ -57,14 +51,14 @@ while true; do
 
 done
 
-while [ ! -z "$COUNTRY" ]; do 
-	echo 
+while [ ! -z "$COUNTRY" ]; do
+	echo
 	echo "$COUNTRYFILES" | sed "s/^$COUNTRY\(.*\)_\(tcp|udp\)/\1/" | sort | tr '\n' ' '
 	echo
 	read -p "Choose a server: " SERVER
 	echo
 	read -n 1 -p "Choose tcp or udp: " PROTOCOL
-	echo	
+	echo
 
 	if [ "$PROTOCOL" = "t" ] || [ "$PROTOCOL" = "T" ] || [ "$COUNTRY" = "xOnion" ]; then
 		PROTOCOL=tcp
@@ -102,5 +96,3 @@ if ( pgrep openvpn 1>/dev/null 2>&1 ); then
 fi
 echo -e "\e[34m\e[5mStarting new vpn.\e[0m"
 /etc/init.d/openvpn start
-
-
