@@ -5,7 +5,7 @@ sleep 60
 logger "Watchdog started"
 CYCLE=0 
 
-PPING {
+PPING(){
 	local PP=$(ping -c 10 8.8.8.8 | sed -n 's/.*transmitted, \+\([0-9]\+\).*/\1/p')
 	if [ "$PP" -eq 0 ] || [ "$PP" = "" ]; then
 		PP=0
@@ -13,7 +13,7 @@ PPING {
 	echo $PP
 }
 
-RESTART {
+RESTART(){
 	
 	if [ $1 -ge 3 ]; then
 		/etc/init.d/network restart
@@ -67,4 +67,3 @@ while true; do
 	fi
 
 done
-

@@ -1,10 +1,8 @@
 #!/bin/sh
 # /etc/hotplug.d/iface/99-prevent-leak
 
-
 # https://nordvpn.com/tutorials/openwrt/openvpn/
 
-if [ "$ACTION" = ifup ] -o [ "$ACTION" = ifdown ]; then
+if [ "$ACTION" = ifup ] || [ "$ACTION" = ifdown ]; then
 	/etc/openvpn/preventleak.sh
 fi
-
