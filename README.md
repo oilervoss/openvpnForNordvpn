@@ -11,16 +11,36 @@ You need to install OpenWRT packages only once
 opkg update
 opkg install openvpn-openssl
 opkg install ip-full
-opkg install install luci-app-openvpn
+opkg install luci-app-openvpn
 ```
+
+
 
 **Since I'm currently using a very slow and instable 3g internet provider, I don't keep the vpn on all the time, hence I made a otimized Watchdog that will check and restore the vpn only after its first use since last boot. I just keep the openvpn service disable so that it will started only by demand.**
 
-***The script work perfectly too if you have the openvpn service enabled in order to keep you vpn lasting.***
+***The script also work perfectly if you have the openvpn service enabled in order to keep you vpn lasting.***
 
+### Description of included files
 
+Files|Usage|Description
+---|---
+/root/install-nordvpn.sh|On command line|**Work in progress** Script planned to install NordVPN oficial files and my custom scripts
+/root/nordvpn.sh|On command line|This script provide a User Interface to change between the thousands of NordVPN files.
+/root/menu.sh|On command line|This script provide a User Interface to most common OpenWRT/LEDE operations as start/stop the services OpenVPN, Aria2, Transmission
+/etc/openvpn/nordvpn-auth|Configuration|It contains two lines: email and password for authentication on NordVPN service.
+/etc/openvpn/preventleak.sh|On demand|This script is called by the auxiliary scripts to check if the VPN has got down. If yes, it blocks the packet forwarding in the firewall.
+/etc/openvpn/watchdog.sh|On demand|This script is called on boot by rc.local and will monitor the connection through ping each two minutes. If something goes wrong, it restart firewall or network service. It also checks if the VPN tunnel is down, preventing leaking, and monitors it, restarting it. It will be kept running. You can check its actions on logread.
+/etc/openvpn/nordvpn.ovpn|Symbolic link|It will be refered by /etc/config/openvpn. It points the current NordVPN's server configuration file in /etc/openvpn/nordvpn/
+/etc/openvpn/nordvpn/\*|Folder|This folder contains all NordVPN's server configuration files.
+/etc/openvpn/openvpn.lock|Lock file|It will indicate that a VPN connection was started after boot.
+/etc/firewall.user|On demand|This script is called every time the firewall conditions changes. It will call the preventleak.sh script in order to check if the VPN still is up.
+/etc/rc.local|On demand|This script is run on boot. It will clean any /etc/openvpn/openvpn.lock, any blocked firewall forwarding and it will run /etc/openvpn/watchdog.sh
+/etc/config/openvpn|Configuration|Part of the full file where is the modifications needed to use openvpn
+/etc/config/firewall|Configuration|Part of the full file where is the modifications needed to use openvpn
+/etc/config/network|Configuration|Part of the full file where is the modifications needed to use openvpn
+/etc/hotplug.d/iface/99-preventleak|On demand|This is script is called every time some network interface changes. It will call the preventleak.sh script in order to check if the VPN still is up. 
 
----
+-
 ## NordVPN PROMO CODE
 ### High quality VPN service with a huge discount
 - No Logs Policy
