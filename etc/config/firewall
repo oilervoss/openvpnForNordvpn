@@ -1,0 +1,24 @@
+
+config defaults
+	option syn_flood '1'
+	option drop_invalid '1'
+	option input 'ACCEPT'
+	option output 'ACCEPT'
+	option forward 'REJECT'
+
+config include
+	option path '/etc/firewall.user'
+
+config zone ovpnfw
+	option forward 'REJECT'
+	option network 'ovpn'
+	option output 'ACCEPT'
+	option name 'ovpnfw'
+	option masq '1'
+	option mtu_fix '1'
+	option input 'REJECT'
+
+config forwarding
+	option dest 'ovpnfw'
+	option src 'lanfw'
+
