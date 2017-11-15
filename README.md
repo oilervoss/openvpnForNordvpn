@@ -1,3 +1,5 @@
+[10.5281/zenodo.1050410](https://doi.org/10.5281/zenodo.1050410)
+
 ## Custom scripts for Nordvpn at OpenWRT
 
 [NordVPN](https://ref.nordvpn.com/?id=69780735): High-level VPN service 
