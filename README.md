@@ -14,9 +14,9 @@ opkg install ip-full
 opkg install install luci-app-openvpn
 ```
 
-**Since I'm currently using a very slow and instable 3g internet provider, I don't keep the vpn on all the time, hence I made a otimized Watchdog that will check and restore the vpn only after its first use since last boot. I just keep the openvpn service disable so that it will started only by demand.**
+*Since I'm currently using a very slow and instable 3g internet provider, I don't keep the vpn on all the time, hence I made a otimized Watchdog that will check and restore the vpn only after its first use since last boot. I just keep the openvpn service disable so that it will started only by demand.*
 
-***The script work perfectly too if you have the openvpn service enabled in order to keep you vpn lasting.***
+**The script work perfectly too if you have the openvpn service enabled in order to keep you vpn lasting.**
 
 
 
