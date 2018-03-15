@@ -10,7 +10,7 @@ REMOVEFILES="" #list of file names to be removed in case of fail f='\n'
 REMOVEBAK=""   #list of file names to be restored from backup in case of fail f='\n'
 
 # It'll check if a opkg is installed already.
-Ninstall { #opkgfilename #[temp] 
+Ninstallopkg() { #opkgfilename #[temp] 
   echo "Checking $1"
   local t=$(opkg list-installed | cut -d ' ' -f 1 | grep "$1")
   if [ "$t" = "" ]; then
@@ -25,16 +25,16 @@ Ninstall { #opkgfilename #[temp]
 }
 
 # It'll remove a list of opkg f=' '
-Nremoveopkg { #listOfOpkg
+Nremoveopkg() { #listOfOpkg
   if [ ! -z "$1" ]; then
     opkg --autoremove remove $1
   fi
 }
 
 # It'll remove a list of files f='\n'
-Nremovefiles { #listOfFiles #[bak]
+Nremovefiles() { #listOfFiles #[bak]
   if [ ! -z "$1" ]; then
-    for $RF in $1; do
+    for RF in $1; do
       if [ "$2" = "bak" ]; then
 	    mv $RF.backup $RF
 	  else
@@ -44,7 +44,7 @@ Nremovefiles { #listOfFiles #[bak]
   fi
 }
 
-Nfile {
+Ncfile() {
 # file text
   if [ ! -e "$1" ]; then
     touch "$1"
@@ -54,7 +54,7 @@ Nfile {
 }
 
 # It'll check if it'd ocurred a error, abort and clean installation
-Nfail {
+Nfail() {
   local F=$1
   if [ ! $F ]; then
     echo -e "Something went wrong. It'll abort.\nCleaning files."
@@ -69,8 +69,8 @@ Nfail {
 }
 
 # It'll download source files and add to remove list
-Ndownload { #path #url-nofile #filename
-  if [ -e $1/$3 ]
+Ndownload() { #path #url-nofile #filename
+  if [ -e $1/$3 ]; then
     mv $1/$3 $1/$3.backup
 	REMOVEBAK="$REMOVEBAK\n$1/$3"
   else
@@ -85,12 +85,12 @@ Ndownload { #path #url-nofile #filename
 echo "Updating opkg"
 opkg update
 Nfail $?
-Ninstall unzip temp
-Ninstall curl temp
-Ninstall openvpn-openssl
-Ninstall ip-full
+Ninstallopkg unzip temp
+Ninstallopkg curl temp
+Ninstallopkg openvpn-openssl
+Ninstallopkg ip-full
 if [ -e /etc/init.d/uhttpd ]; then
-  Ninstall luci-app-openvpn
+  Ninstallopkg luci-app-openvpn
 fi
 
 # Download Nordvpn Config files
@@ -130,51 +130,58 @@ for F in /etc/openvpn/nordvpn/*.ovpn ; do
 	"/etc/openvpn/nordvpn/$NF.ovpn"
 done
 
-read -p 'What is your Nordvpn username (email)? ' uservar
-read -sp 'What is your Nordvpn password? ' passvar
-echo "I will write them to /etc/openvpn/nordvpn-auth"
-echo "Edit it if you need"
+if [ -e "/etc/openvpn/nordvpn-auth" ]; then
+	CHOICE = ""
+	read -r -N 1 -t 30 -p "There is nordvpn credentials file already. Do you wish to change it? (y/n)" CHOICE
+else
+	CHOICE = "y"
+fi
 
-echo $uservar > /etc/openvpn/nordvpn-auth
-echo $passvar >> /etc/openvpn/nordvpn-auth
-chmod u=rw,go= /etc/openvpn/nordvpn-auth
-
+if [ "$CHOICE" = "y" -o "$CHOICE" = "Y" ]; then
+	read -p 'What is your Nordvpn username (email)? ' uservar
+	read -sp 'What is your Nordvpn password? ' passvar
+	echo "I will write them to /etc/openvpn/nordvpn-auth"
+	echo "Edit it if you need"
+	echo $uservar > /etc/openvpn/nordvpn-auth
+	echo $passvar >> /etc/openvpn/nordvpn-auth
+	chmod u=rw,go= /etc/openvpn/nordvpn-auth
+fi
 
 cd /etc/openvpn
-Ndownload "/etc/openvpn" "https://github.com/oilervoss/openwrt/raw/nordvpn/etc/openvpn/" watchdog.sh
-Ndownload "/etc/openvpn" "https://github.com/oilervoss/openwrt/raw/nordvpn/etc/openvpn/" preventleak.sh
-Ndownload "/etc/hotplug.d/iface" "https://github.com/oilervoss/openwrt/raw/nordvpn/etc/hotplug.d/iface/" 99-preventleak
-Ndownload "/root" "https://github.com/oilervoss/openwrt/raw/nordvpn/root/" nordvpn.sh
+Ndownload "/etc/openvpn" "https://github.com/oilervoss/openvpnForNordvpn/raw/master/etc/openvpn/" watchdog.sh
+Ndownload "/etc/openvpn" "https://github.com/oilervoss/openvpnForNordvpn/raw/master/etc/openvpn/" preventleak.sh
+Ndownload "/etc/hotplug.d/iface" "https://github.com/oilervoss/openvpnForNordvpn/raw/master/etc/hotplug.d/iface/" 99-preventleak
+Ndownload "/root" "https://github.com/oilervoss/openvpnForNordvpn/raw/master/root/" nordvpn.sh
 
-ckfile /etc/rc.local "rm -f /etc/openvpn/openvpn.lock &"
-ckfile /etc/rc.local "/etc/openvpn/watchdog &"
-ckfile /etc/firewall.user "/etc/openvpn/preventleak.sh &"
+#Ncfile /etc/rc.local "rm -f /etc/openvpn/openvpn.lock &"
+#Ncfile /etc/rc.local "/etc/openvpn/watchdog &"
+#Ncfile /etc/firewall.user "/etc/openvpn/preventleak.sh &"
 
 ## search /etc/config/firewall for option network 'ovpn'
-uci set firewall.openvpn 			= zone
-uci set firewall.openvpn.forward 	= 'REJECT'
-uci set firewall.openvpn.network 	= 'ovpn'
-uci set firewall.openvpn.output 	= 'ACCEPT'
-uci set firewall.openvpn.name 		= 'ovpnfw'
-uci set firewall.openvpn.masq 		= '1'
-uci set firewall.openvpn.mtu_fix 	= '1'
-uci set firewall.openvpn.input 		= 'REJECT'
+#uci set firewall.openvpn 			= zone
+#uci set firewall.openvpn.forward 	= 'REJECT'
+#uci set firewall.openvpn.network 	= 'ovpn'
+#uci set firewall.openvpn.output 	= 'ACCEPT'
+#uci set firewall.openvpn.name 		= 'ovpnfw'
+#uci set firewall.openvpn.masq 		= '1'
+#uci set firewall.openvpn.mtu_fix 	= '1'
+#uci set firewall.openvpn.input 		= 'REJECT'
 
 ## search /etc/config/firewall for the name of lan
-LAN=`uci get firewall.@forwarding[-1].src`
-uci add firewall forwarding
-uci set firewall.@forwarding[-1].src =	$LAN
-uci set firewall.@forwarding[-1].dest =	ovpnfw
+#LAN=`uci get firewall.@forwarding[-1].src`
+#uci add firewall forwarding
+#uci set firewall.@forwarding[-1].src =	$LAN
+#uci set firewall.@forwarding[-1].dest =	ovpnfw
 
 ## search /etc/config/network for the name of interface
-uci set network.ovpn 		= interface
-uci set network.ovpn.proto 	= none
-uci set network.ovpn.ifname	= tun0
+#uci set network.ovpn 		= interface
+#uci set network.ovpn.proto 	= none
+#uci set network.ovpn.ifname	= tun0
 
 ## search /etc/config/openvpn for nordvpn.ovpn
-uci set openvpn.Nordvpn 		= 'openvpn'
-uci set openvpn.Nordvpn.config 	= '/etc/openvpn/nordvpn.ovpn'
-uci set openvpn.Nordvpn.enabled	= 1
+#uci set openvpn.Nordvpn 		= 'openvpn'
+#uci set openvpn.Nordvpn.config 	= '/etc/openvpn/nordvpn.ovpn'
+#uci set openvpn.Nordvpn.enabled	= 1
 
 ln -sf /etc/openvpn/nordvpn/us111.tcp.ovpn /etc/openvpn/nordvpn.ovpn
 
