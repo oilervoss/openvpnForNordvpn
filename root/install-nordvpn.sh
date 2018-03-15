@@ -12,8 +12,8 @@ REMOVEBAK=""   #list of file names to be restored from backup in case of fail f=
 # It'll check if a opkg is installed already.
 Ninstallopkg() { #opkgfilename #[temp] 
   echo "Checking $1"
-  local t=$(opkg list-installed | cut -d ' ' -f 1 | grep "$1")
-  if [ "$t" = "" ]; then
+  local T=$(opkg list-installed | cut -d ' ' -f 1 | grep "$1")
+  if [ -z "$T" ]; then
     echo "I didn't find $1. Installing."
     if [ "$2" = "temp" ]; then
       REMOVETEMP="$REMOVEOPKGTEMP $1"
@@ -33,6 +33,7 @@ Nremoveopkg() { #listOfOpkg
 
 # It'll remove a list of files f='\n'
 Nremovefiles() { #listOfFiles #[bak]
+  local RF
   if [ ! -z "$1" ]; then
     for RF in $1; do
       if [ "$2" = "bak" ]; then
