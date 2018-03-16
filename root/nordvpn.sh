@@ -15,7 +15,7 @@ fi
 
 echo -e "\n\e[36mThis is the current setting: \e[1m${CURRENT}\e[0m"
 
-NORDFILES=$( ls -1 /etc/openvpn/nordvpn/*.ovpn | sed -nr 's:/etc/openvpn/nordvpn/(.+)\.ovpn:\1:p' )
+NORDFILES=$( find /etc/openvpn/nordvpn/*.ovpn -type f | sed -nr 's:/etc/openvpn/nordvpn/(.+)\.ovpn:\1:p' )
 
 while [ -z "$CHOSENFILE" ]; do
 	echo
