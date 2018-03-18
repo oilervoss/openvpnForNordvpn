@@ -149,10 +149,10 @@ if [ "$CHOICE" = "y" -o "$CHOICE" = "Y" ]; then
 fi
 
 cd /etc/openvpn
-Ndownload "/etc/openvpn" "https://github.com/oilervoss/openvpnForNordvpn/raw/master/etc/openvpn/" watchdog.sh
-Ndownload "/etc/openvpn" "https://github.com/oilervoss/openvpnForNordvpn/raw/master/etc/openvpn/" preventleak.sh
-Ndownload "/etc/hotplug.d/iface" "https://github.com/oilervoss/openvpnForNordvpn/raw/master/etc/hotplug.d/iface/" 99-preventleak
-Ndownload "/root" "https://github.com/oilervoss/openvpnForNordvpn/raw/master/root/" nordvpn.sh
+Ndownload "/etc/openvpn" "https://raw.githubusercontent.com/oilervoss/openvpnForNordvpn/master/etc/openvpn/" watchdog.sh
+Ndownload "/etc/openvpn" "https://raw.githubusercontent.com/oilervoss/openvpnForNordvpn/master/etc/openvpn/" preventleak.sh
+Ndownload "/etc/hotplug.d/iface" "https://raw.githubusercontent.com/oilervoss/openvpnForNordvpn/master/etc/hotplug.d/iface/" 99-preventleak
+Ndownload "/root" "https://raw.githubusercontent.com/oilervoss/openvpnForNordvpn/master/root/" nordvpn.sh
 
 #Ncfile /etc/rc.local "rm -f /etc/openvpn/openvpn.lock &"
 #Ncfile /etc/rc.local "/etc/openvpn/watchdog &"
@@ -184,6 +184,6 @@ Ndownload "/root" "https://github.com/oilervoss/openvpnForNordvpn/raw/master/roo
 #uci set openvpn.Nordvpn.config 	= '/etc/openvpn/nordvpn.ovpn'
 #uci set openvpn.Nordvpn.enabled	= 1
 
-ln -sf /etc/openvpn/nordvpn/us111.tcp.ovpn /etc/openvpn/nordvpn.ovpn
+ln -sf /etc/openvpn/nordvpn/us1111.tcp.ovpn /etc/openvpn/nordvpn.ovpn
 
 Nremoveopkg $REMOVETEMP
