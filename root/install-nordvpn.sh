@@ -4,10 +4,10 @@
 # This script download Nordvpn config files for Openvpn and edit them
 # to be used in OpenWRT ou LEDE
 
-REMOVEOPKGTEMP=""  #list of opkg file names to be removed at the end f=' ' 
-REMOVEOPKGFAIL=""  #list of opkg file names to be removed in case of fail f=' ' 
-REMOVEFILES="" #list of file names to be removed in case of fail f='\n'
-REMOVEBAK=""   #list of file names to be restored from backup in case of fail f='\n'
+REMOVEOPKGTEMP=""  #It'l be populate with packages names to be removed at the end f=' ' 
+REMOVEOPKGFAIL=""  #It'l be populate with packages names to be removed in case of fail f=' ' 
+REMOVEFILES="" #It'l be populate with file names to be removed in case of fail f='\n'
+REMOVEBAK=""   #It'l be populate with file names to be restored from backup in case of fail f='\n'
 
 # It'll check if a opkg is installed already.
 Ninstallopkg() { #opkgfilename #[temp] 
@@ -18,7 +18,7 @@ Ninstallopkg() { #opkgfilename #[temp]
     if [ "$2" = "temp" ]; then 
       REMOVETEMP="$REMOVEOPKGTEMP $1"
     else
-      REMOVE="$REMOVEOPKGFAIL $1"
+      REMOVEOPKGFAIL="$REMOVEOPKGFAIL $1"
     fi
     opkg install $1
   fi
@@ -33,21 +33,29 @@ Nremoveopkg() { #listOfOpkg
 Nremovefiles() { #listOfFiles #[bak]
   local RF
   if [ ! -z "$1" ]; then
-    for RF in $1; do
+    for RF in "$1"; do
       if [ "$2" = "bak" ]; then
-        mv $RF.backup $RF
+        mv "$RF.backup" "$RF"
       else
-        rm $RF
+        if [ -d "$RF" ]; then
+	  rm "$RF/*"
+	  rmdir "$RF"
+	else
+	  rm "$RF"
+	fi
       fi
     done
   fi
 }
 
-Ncfile() {
-# file text
-  [ ! -e "$1" ] && touch "$1"
-###?????????
-
+Nfbackup() { #FilepathFilename
+  if [ -e "$1" ]; then
+    [ -d "$1.backup" ] && rm -rf "$1.backup"
+    mv "$1" "$1.backup"
+    REMOVEBAK="$REMOVEBAK\n$1"   
+  else
+    REMOVEFILES="$REMOVEFILES\n$1"
+  fi
 }
 
 # It'll check if it'd ocurred a error, abort and clean installation
@@ -77,7 +85,7 @@ Ndownload() { #path #url-nofile #filename
     REMOVEFILES="$REMOVEFILES\n$1/$3"
   fi
   cd $1
-  curl -O --url "$2$3"
+  wget "$2$3"
   chmod u+x "$1/$3"
 }
 
@@ -88,7 +96,6 @@ Nfail $?
 Ninstallopkg openvpn-openssl
 Ninstallopkg ip-full
 Ninstallopkg unzip temp
-Ninstallopkg curl temp
 Ninstallopkg wget temp
 Ninstallopkg ca-certificates temp
 Ninstallopkg libustream-openssl temp
@@ -99,16 +106,11 @@ fi
 # Download Nordvpn Config files
 echo "If you have a slow connection, be patient."
 echo "Downloading official nordvpn files."
-cd /root
-curl -O --url "http://downloads.nordcdn.com/configs/archives/servers/ovpn.zip"
+Ndownload "/root" "https://downloads.nordcdn.com/configs/archives/servers/" "ovpn.zip"
 Nfail $?
-if [ -d /etc/openvpn/nordvpn ]; then
-  [ -d /etc/openvpn/nordvpn.old ] && rm -rf /etc/openvpn/nordvpn.old
-  mv /etc/openvpn/nordvpn /etc/openvpn/nordvpn.old
-fi
+Nfbackup /etc/openvpn/nordvpn
 unzip -j -o /root/ovpn.zip -d /etc/openvpn/nordvpn/
 Nfail $?
-rm /root/ovpn.zip
 
 # Simplifying name and content
 for F in /etc/openvpn/nordvpn/*.ovpn ; do
@@ -136,13 +138,13 @@ for F in /etc/openvpn/nordvpn/*.ovpn ; do
 done
 
 if [ -e "/etc/openvpn/nordvpn-auth" ]; then
-  CHOICE = ""
-  read -r -N 1 -t 30 -p "There is nordvpn credentials file already. Do you wish to change it? (y/n)" CHOICE
+  CHOOSE = ""
+  read -r -n 1 -t 30 -p "There is nordvpn credentials file already. Do you wish to change it? (y/n)" CHOOSE
 else
-  CHOICE = "y"
+  CHOOSE = "y"
 fi
 
-if [ "$CHOICE" = "y" -o "$CHOICE" = "Y" ]; then
+if [ "$CHOOSE" = "y" -o "$CHOOSE" = "Y" ]; then
   read -p 'What is your Nordvpn username (email)? ' uservar
   read -sp 'What is your Nordvpn password? ' passvar
   echo "I will write them to /etc/openvpn/nordvpn-auth"
