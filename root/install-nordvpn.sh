@@ -101,13 +101,13 @@ echo "If you have a slow connection, be patient."
 echo "Downloading official nordvpn files."
 cd /root
 curl -O --url "http://downloads.nordcdn.com/configs/archives/servers/ovpn.zip"
-ckfail $?
+Nfail $?
 if [ -d /etc/openvpn/nordvpn ]; then
   [ -d /etc/openvpn/nordvpn.old ] && rm -rf /etc/openvpn/nordvpn.old
   mv /etc/openvpn/nordvpn /etc/openvpn/nordvpn.old
 fi
 unzip -j -o /root/ovpn.zip -d /etc/openvpn/nordvpn/
-ckfail $?
+Nfail $?
 rm /root/ovpn.zip
 
 # Simplifying name and content
