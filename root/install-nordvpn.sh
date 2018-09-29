@@ -165,30 +165,33 @@ Ndownload "/root" "https://raw.githubusercontent.com/oilervoss/openvpnForNordvpn
 #Ncfile /etc/firewall.user "/etc/openvpn/preventleak.sh &"
 
 ## search /etc/config/firewall for option network 'ovpn'
-#uci set firewall.openvpn 			= zone
-#uci set firewall.openvpn.forward 	= 'REJECT'
-#uci set firewall.openvpn.network 	= 'ovpn'
-#uci set firewall.openvpn.output 	= 'ACCEPT'
-#uci set firewall.openvpn.name 		= 'ovpnfw'
-#uci set firewall.openvpn.masq 		= '1'
-#uci set firewall.openvpn.mtu_fix 	= '1'
-#uci set firewall.openvpn.input 		= 'REJECT'
+uci set firewall.openvpn=zone
+uci set firewall.openvpn.forward='REJECT'
+uci set firewall.openvpn.network='ovpn'
+uci set firewall.openvpn.output='ACCEPT'
+uci set firewall.openvpn.name='ovpnfw'
+uci set firewall.openvpn.masq='1'
+uci set firewall.openvpn.mtu_fix='1'
+uci set firewall.openvpn.input='REJECT'
 
 ## search /etc/config/firewall for the name of lan
-#LAN=`uci get firewall.@forwarding[-1].src`
-#uci add firewall forwarding
-#uci set firewall.@forwarding[-1].src =	$LAN
-#uci set firewall.@forwarding[-1].dest =	ovpnfw
+LAN=`uci get firewall.@forwarding[-1].src`
+uci set firewall.openvpnfw=forwarding
+uci set firewall.openvpnfw.src=$LAN
+uci set firewall.openvpnfw.dest=ovpnfw
+uci commit firewall
 
 ## search /etc/config/network for the name of interface
-#uci set network.ovpn 		= interface
-#uci set network.ovpn.proto 	= none
-#uci set network.ovpn.ifname	= tun0
+uci set network.ovpn=interface
+uci set network.ovpn.proto=none
+uci set network.ovpn.ifname=tun0
+uci commit network
 
 ## search /etc/config/openvpn for nordvpn.ovpn
-#uci set openvpn.Nordvpn 		= 'openvpn'
-#uci set openvpn.Nordvpn.config 	= '/etc/openvpn/nordvpn.ovpn'
-#uci set openvpn.Nordvpn.enabled	= 1
+uci set openvpn.Nordvpn='openvpn'
+uci set openvpn.Nordvpn.config='/etc/openvpn/nordvpn.ovpn'
+uci set openvpn.Nordvpn.enabled=1
+uci commit openvpn
 
 ln -sf /etc/openvpn/nordvpn/us1111.tcp.ovpn /etc/openvpn/nordvpn.ovpn
 
