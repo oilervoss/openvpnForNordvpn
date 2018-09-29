@@ -138,13 +138,13 @@ for F in /etc/openvpn/nordvpn/*.ovpn ; do
 done
 
 if [ -e "/etc/openvpn/nordvpn-auth" ]; then
-  CHOOSE = ""
-  read -r -n 1 -t 30 -p "There is nordvpn credentials file already. Do you wish to change it? (y/n)" CHOOSE
+  ESCOLHA = ""
+  read -r -n 1 -t 30 -p "There is nordvpn credentials file already. Do you wish to change it? (y/n)" ESCOLHA
 else
-  CHOOSE = "y"
+  ESCOLHA = "y"
 fi
 
-if [ "$CHOOSE" = "y" -o "$CHOOSE" = "Y" ]; then
+if [ "$ESCOLHA" = "y" -o "$ESCOLHA" = "Y" ]; then
   read -p 'What is your Nordvpn username (email)? ' uservar
   read -sp 'What is your Nordvpn password? ' passvar
   echo "I will write them to /etc/openvpn/nordvpn-auth"
