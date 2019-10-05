@@ -5,16 +5,30 @@
 
 CHOSENFILE=""
 
-CURRENT=$( ls -l /etc/openvpn/nordvpn.ovpn  2>/dev/null | sed -nr 's:.+-> .*nordvpn/(.+)\.ovpn$:\1:p' )
+CURRENT=$( ls -l /etc/openvpn/openvpn.ovpn  2>/dev/null | sed -nr 's:.+-> .*openvpn/(.+)\.ovpn:\1:p' )
 
 if [ -z $CURRENT ]; then
-        ln -sf /etc/openvpn/nordvpn.ovpn /etc/openvpn/nordvpn/us1.tcp.ovpn
+        ln -sf /etc/openvpn/nordvpn/us2128.udp.ovpn /etc/openvpn/openvpn.ovpn
         [ $? != 0 ] && exit $?
 fi
 
 echo -e "\n\e[36mThis is the current setting: \e[1m${CURRENT}\e[0m"
 
-NORDFILES=$( find /etc/openvpn/nordvpn/*.ovpn -type f | sed -nr 's:/etc/openvpn/nordvpn/(.+)\.ovpn:\1:p' )
+echo -e "\n\n"
+
+read -n 1 -p "Choose <N>ordvpn or <W>indscribe: " OPCAO
+
+if [ "$OPCAO" == "N" ] || [ "$OPCAO" == "n" ]; then
+        PROVIDER="nordvpn"
+else
+        PROVIDER="windscribe"
+fi
+echo
+echo ****************************************
+echo **** Be patient. Reading ovpn files ****
+echo ****************************************
+echo
+NORDFILES=$( find /etc/openvpn/$PROVIDER/*.ovpn -type f | sed -nr 's:/etc/openvpn/'"$PROVIDER"'/(.+)\.ovpn:\1:p' )
 
 while [ -z "$CHOSENFILE" ]; do
         echo
@@ -83,12 +97,13 @@ while [ -z "$CHOSENFILE" ]; do
                 echo
                 echo -e "\e[1m\e[32mSetting to tunnel: \e[5m$CHOSENFILE\e[0m"
                 echo
-                ln -sf /etc/openvpn/nordvpn/$COUNTRY$SERVER.$PROTOCOL.ovpn /etc/openvpn/nordvpn.ovpn
+                rm /etc/openvpn/openvpn.ovpn
+                ln -s /etc/openvpn/$PROVIDER/$COUNTRY$SERVER.$PROTOCOL.ovpn /etc/openvpn/openvpn.ovpn
                 if [ $? -ne 0 ]; then
                         echo "Error"
                         exit $?
                 fi
-                ls -l /etc/openvpn/nordvpn.ovpn | sed -nr 's:.+(/etc/.+->.+):\1:p'
+                ls -l /etc/openvpn/openvpn.ovpn | sed -nr 's:.+(/etc/.+->.+):\1:p'
                 break
         done
 
