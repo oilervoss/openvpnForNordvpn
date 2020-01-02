@@ -1,0 +1,117 @@
+#!/bin/sh /etc/rc.common
+#
+
+
+# External server to check by ping:
+IPPING='8.8.8.8'
+
+START=99
+STOP=99
+
+FINDIFNAME() {
+        local N
+        for N in $(uci show network | sed -nr 's:network\.(@?[a-zA-Z@0-9_]+\[?\d*\]?)\..*:\1:p'|sort -u); do
+                if [ "$(uci get network.${N}.proto 2>/dev/null)" == "ncm" ]; then
+                        IFNAME=${N}
+                        DEVICE=$(uci get network.${IFNAME}.device 2>/dev/null)
+                        APN=$(uci get network.${IFNAME}.apn 2>/dev/null)
+                        APNUSER=$(uci get network.${IFNAME}.username 2>/dev/null)
+                        APNPASS=$(uci get network.${IFNAME}.password 2>/dev/null)
+                        IFMODE=$(uci get network.${IFNAME}.mode 2>/dev/null)
+                        if [ -z ${APNPASS} ] || [ -z ${APNUSER} ] || [ -z ${APN} ] || [ -z ${IFMODE} ] || [ -z ${DEVICE} ]; then
+                                logger -t "ncm-fix[$$]" -p err "Aborted. Interface ${IFNAME} has some empty setting (device, apn, apn username, apn password or mode)"
+                                exit 1
+                        fi
+                        break
+                fi
+        done
+
+        if [ -z ${IFNAME} ]; then
+                logger -t "ncm-fix[$$]" -p err "Aborted. An interface using ncm protocol wasn't found in /etc/config/network."
+                exit 1
+        fi
+
+        if [ ! -e ${DEVICE} ]; then
+                logger -t "ncm-fix[$$]" -p err "Aborted. No such device ${DEVICE}"
+                exit 1
+        fi
+        return 0
+}
+
+PPING() {
+        local PP=0
+        let PP=$(ping -c 10 ${IPPING} 2>/dev/null | sed -nr 's/.*transmitted, +([0-9]+).*/\1/p')+0
+        echo $PP
+}
+
+
+SENDAT() {
+        local N
+        local COMMAND=$1
+        local DEVICE=$2
+        local ANSWER
+        [ $# -lt 2 ] && logger -t "ncm-fix[$$]" -p err "Wrong arguments for the function SENDAT"; return 1
+        [ ! -e ${DEVICE} ] && logger -t "ncm-fix[$$]" -p err "Aborted. No such device ${DEVICE}"; exit 1
+        for N in 1 2 ; do
+                nice -n 19 timeout 3s echo -ne "${COMMAND}\r\n" > ${DEVICE} &
+                ANSWER=$(nice -n -2 timeout 2s cat ${DEVICE})
+                [ "$(echo $ANSWER | sed -n "/OK/{p;q}")" == "OK" ] & return 0
+        done
+        logger -t "ncm-fix[$$]" -p err "Command ${COMMAND} sent to ${DEVICE} didn't return an OK as response"
+        return 1
+}
+
+BOOTNCM() {     # Arg: [empty] - Restart device and interface
+                # Arg: stop - Stop device and interface
+
+        # Finding the first interface that use ncm as protocol in /etc/config/network
+        FINDIFNAME
+
+        logger -t "ncm-fix[$$]" -p info "Turning interface $IFNAME down. Sending  AT commands to ${DEVICE} starts"
+
+        if [ "$(ifstatus ${IFNAME}|sed  -nr 's/.*\"up\": (true),/\1/p')" == "true" ]; then
+                ifdown $IFNAME 2>/dev/null
+                sleep 2
+        fi
+
+        SENDAT "ATZ" ${DEVICE}
+        SENDAT "AT^NDISDUP=1,0" ${DEVICE}
+
+
+
+                SENDAT "AT^NDISDUP=1,1,\"${APN}\",\"${APNUSER}\",\"${APNPASS}\"" ${DEVICE}
+                SENDAT "AT^SYSCFGEX="03",3fffffff,2,4,7fffffffffffffff,," ${DEVICE}
+                logger -t "ncm-fix[$$]" -p info "Sending AT commands ends. Turning interface ${IFNAME} up"
+                ifup $IFNAME 2>/dev/null
+
+
+}
+
+start() {
+
+
+        local P=$(PPING)
+
+        logger -t "ncm-fix[$$]" -p debug "Ping had ${P}0% of success"
+
+        if [ ${P} -eq 0 ]; then
+                logger -t "ncm-fix[$$]" -p warning "${IPPING} couldn't be pinged. Restarting ncm device"
+                BOOTNCM
+                local N=0
+                while [ ${N} -lt 10 ]; do
+                        P=$(PPING)
+                        if [ ${P} -lt 2 ]; then
+                                let N+=1
+                                sleep 3
+                        else
+                                break
+                        fi
+                done
+                logger -t "ncm-fix[$$]" -p notice "New ping had ${P}0% of success"
+        fi
+}
+
+
+stop() {
+        BOOTNCM stop
+}
