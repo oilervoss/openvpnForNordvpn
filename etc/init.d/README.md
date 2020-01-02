@@ -2,6 +2,15 @@
 Some USB 4G modems don't reconnect after losing the connection. 
 This is frequently with [modded Hauwei](http://blog.asiantuntijakaveri.fi/2015/07/convert-huawei-e3372h-153-from.html) modems in order to work with the ncm protocol.
 
+## Requisites
+You must have _timeout_ installed
+You can do it using:
+~~~~sh
+opkg update
+opkg install coreutils-timeout
+~~~~ 
+
+
 ## Solution
 This init script will ping a public IP. If its success rate is less than 20%, it will drop the ncm interface and send AT commands to the modem forcing it to reconnect.
 Only then it will bring the ncm interface back.
