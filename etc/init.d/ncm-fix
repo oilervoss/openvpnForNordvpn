@@ -18,10 +18,11 @@ FINDIFNAME() {
                         APNUSER=$(uci get network.${IFNAME}.username 2>/dev/null)
                         APNPASS=$(uci get network.${IFNAME}.password 2>/dev/null)
                         IFMODE=$(uci get network.${IFNAME}.mode 2>/dev/null)
-                        if [ -z ${APNPASS} ] || [ -z ${APNUSER} ] || [ -z ${APN} ] || [ -z ${IFMODE} ] || [ -z ${DEVICE} ]; then
+                        if [ -z ${APNPASS} ] || [ -z ${APNUSER} ] || [ -z ${APN} ] || [ -z ${DEVICE} ]; then
                                 logger -t "ncm-fix[$$]" -p err "Aborted. Interface ${IFNAME} has some empty setting (device, apn, apn username, apn password or mode)"
                                 exit 1
                         fi
+                        [ -z $IFMODE ] && IFMODE=oem
                         break
                 fi
         done
@@ -66,29 +67,61 @@ BOOTNCM() {     # Arg: [empty] - Restart device and interface
 
         # Finding the first interface that use ncm as protocol in /etc/config/network
         FINDIFNAME
+        logger -t "ncm-fix[$$]" -p info "Turning interface ${IFNAME} down. Starting to sending  AT commands to ${DEVICE}"
 
-        logger -t "ncm-fix[$$]" -p info "Turning interface $IFNAME down. Sending  AT commands to ${DEVICE} starts"
-
-        if [ "$(ifstatus ${IFNAME}|sed  -nr 's/.*\"up\": (true),/\1/p')" == "true" ]; then
-                ifdown $IFNAME 2>/dev/null
-                sleep 2
+        if [ "$(ifstatus ${IFNAME} 2>/dev/null | sed  -nr 's/.*\"up\": (true),/\1/p')" == "true" ]; then
+                [ -n "$(ifdown ${IFNAME} 2>/dev/null)" ] && logger -t "ncm-fix[$$]" -p warning "Turning interface ${INTERFACE} down failed"
+                sleep 1
         fi
 
         SENDAT "ATZ" ${DEVICE}
         SENDAT "AT^NDISDUP=1,0" ${DEVICE}
 
 
-
+        if [ "$#" -ge 1 ] && [ "$1" -ne "stop" ]; then
                 SENDAT "AT^NDISDUP=1,1,\"${APN}\",\"${APNUSER}\",\"${APNPASS}\"" ${DEVICE}
-                SENDAT "AT^SYSCFGEX="03",3fffffff,2,4,7fffffffffffffff,," ${DEVICE}
-                logger -t "ncm-fix[$$]" -p info "Sending AT commands ends. Turning interface ${IFNAME} up"
-                ifup $IFNAME 2>/dev/null
-
+                local ATMODE
+                case ${IFMODE} in
+                        lte )
+                                ATMODE="03"
+                        ;;
+                        umts )
+                                ATMODE="02"
+                        ;;
+                        gsm )
+                                ATMODE="01"
+                        ;;
+                        preferlte )
+                                ATMODE="030201"
+                        ;;
+                        preferumts )
+                                ATMODE="0201"
+                        ;;
+                        auto )
+                                ATMODE="00"
+                        ;;
+                esac
+                [ ${IFMODE} -ne "oem" ] && SENDAT "AT^SYSCFGEX=\"${ATMODE}\",3fffffff,1,3,7fffffffffffffff,," ${DEVICE}
+                logger -t "ncm-fix[$$]" -p info "AT commands ended. Turning interface ${IFNAME} up"
+                [ -n "$(ifup ${IFNAME} 2>/dev/null)" ] && logger -t "ncm-fix[$$]" -p warning "Turning interface ${INTERFACE} up failed"
+        fi
 
 }
 
-start() {
+CRONTAB() {
+        if [ -e /etc/rc.d/S99ncm-fix ]; then
+                if [ ! -f /etc/crontabs/root ] || [ -z "$(sed -n "/\/etc\/init.d\/ncm-fix/p" /etc/crontabs/root)" ]; then
+                        echo "*/20      *       *       *       *       /etc/init.d/ncm-fix start" >> /etc/crontabs/root
+                        /etc/init.d/cron stop
+                        /etc/init.d/cron start
+                fi
+        else
+                echo "$(sed "/\/etc\/init.d\/ncm-fix/d" /etc/crontabs/root)" >| /etc/crontabs/root
+        fi
+}
 
+
+start() {
 
         local P=$(PPING)
 
@@ -99,19 +132,22 @@ start() {
                 BOOTNCM
                 local N=0
                 while [ ${N} -lt 10 ]; do
+                        sleep 3
                         P=$(PPING)
-                        if [ ${P} -lt 2 ]; then
-                                let N+=1
-                                sleep 3
-                        else
-                                break
-                        fi
+                        [ ${P} -lt 2 ] && let N+=1 || break
                 done
                 logger -t "ncm-fix[$$]" -p notice "New ping had ${P}0% of success"
         fi
+        CRONTAB
+
 }
 
 
 stop() {
         BOOTNCM stop
+}
+
+boot() {
+        sleep 10
+        start
 }
