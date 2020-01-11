@@ -14,6 +14,7 @@ FINDIFNAME() {
                 if [ "$(uci get network.${N}.proto 2>/dev/null)" == "ncm" ]; then
                         IFNAME=${N}
                         DEVICE=$(uci get network.${IFNAME}.device 2>/dev/null)
+                        DEVICE=/dev/ttyUSB0
                         APN=$(uci get network.${IFNAME}.apn 2>/dev/null)
                         APNUSER=$(uci get network.${IFNAME}.username 2>/dev/null)
                         APNPASS=$(uci get network.${IFNAME}.password 2>/dev/null)
@@ -22,7 +23,8 @@ FINDIFNAME() {
                                 logger -t "ncm-fix[$$]" -p err "Aborted. Interface ${IFNAME} has some empty setting (device, apn, apn username, apn password or mode)"
                                 exit 1
                         fi
-                        [ -z $IFMODE ] && IFMODE=oem
+                        [ -z $IFMODE ] \
+                                && IFMODE=oem
                         break
                 fi
         done
@@ -36,7 +38,6 @@ FINDIFNAME() {
                 logger -t "ncm-fix[$$]" -p err "Aborted. No such device ${DEVICE}"
                 exit 1
         fi
-        return 0
 }
 
 PPING() {
@@ -46,42 +47,41 @@ PPING() {
 }
 
 
-SENDAT() {
+SENDATC() {
         local N
-        local COMMAND=$1
-        local DEVICE=$2
-        local ANSWER
-        [ $# -lt 2 ] && logger -t "ncm-fix[$$]" -p err "Wrong arguments for the function SENDAT"; return 1
-        [ ! -e ${DEVICE} ] && logger -t "ncm-fix[$$]" -p err "Aborted. No such device ${DEVICE}"; exit 1
-        for N in 1 2 ; do
-                nice -n 19 timeout 3s echo -ne "${COMMAND}\r\n" > ${DEVICE} &
-                ANSWER=$(nice -n -2 timeout 2s cat ${DEVICE})
-                [ "$(echo $ANSWER | sed -n "/OK/{p;q}")" == "OK" ] & return 0
-        done
-        logger -t "ncm-fix[$$]" -p err "Command ${COMMAND} sent to ${DEVICE} didn't return an OK as response"
-        return 1
+        local DEVICE=$1
+        shift
+        local COMMAND=$@
+        if [ -z "$DEVICE" -o -z "$COMMAND" ]; then
+                logger -t "ncm-fix[$$]" -p err "Wrong arguments for the function SENDAT"
+                return 1
+        fi
+        if [ ! -e ${DEVICE} ]; then
+                logger -t "ncm-fix[$$]" -p err "Aborted. No such device ${DEVICE}"
+                exit 1
+        fi
+        logger -t "ncm-fix[$$]" -p info "Sending ${COMMAND} to ${DEVICE}"
+        timeout 2s echo -ne "${COMMAND}\r\n" > ${DEVICE}
 }
 
-BOOTNCM() {     # Arg: [empty] - Restart device and interface
+BOOTNCM() {     # Arg: run - Restart device and interface
                 # Arg: stop - Stop device and interface
 
         # Finding the first interface that use ncm as protocol in /etc/config/network
         FINDIFNAME
         logger -t "ncm-fix[$$]" -p info "Turning interface ${IFNAME} down. Starting to sending  AT commands to ${DEVICE}"
+        [ "$(ifstatus ${IFNAME} 2>/dev/null | sed  -nr 's/.*\"up\": (true),/\1/p')" == "true" ] \
+                && [ -n "$(ifdown ${IFNAME} 2>/dev/null)" ] \
+                && logger -t "ncm-fix[$$]" -p warning "Turning interface ${INTERFACE} down failed"
 
-        if [ "$(ifstatus ${IFNAME} 2>/dev/null | sed  -nr 's/.*\"up\": (true),/\1/p')" == "true" ]; then
-                [ -n "$(ifdown ${IFNAME} 2>/dev/null)" ] && logger -t "ncm-fix[$$]" -p warning "Turning interface ${INTERFACE} down failed"
-                sleep 1
-        fi
+        SENDATC ${DEVICE} "ATZ"
+        SENDATC ${DEVICE} "AT^NDISDUP=1,0"
 
-        SENDAT "ATZ" ${DEVICE}
-        SENDAT "AT^NDISDUP=1,0" ${DEVICE}
-
-
-        if [ "$#" -ge 1 ] && [ "$1" -ne "stop" ]; then
-                SENDAT "AT^NDISDUP=1,1,\"${APN}\",\"${APNUSER}\",\"${APNPASS}\"" ${DEVICE}
+#       if [ "$1" == "run" ]; then
+                sleep 2
+                SENDATC ${DEVICE} "AT^NDISDUP=1,1,\"${APN}\",\"${APNUSER}\",\"${APNPASS}\""
                 local ATMODE
-                case ${IFMODE} in
+                case $IFMODE in
                         lte )
                                 ATMODE="03"
                         ;;
@@ -101,22 +101,26 @@ BOOTNCM() {     # Arg: [empty] - Restart device and interface
                                 ATMODE="00"
                         ;;
                 esac
-                [ ${IFMODE} -ne "oem" ] && SENDAT "AT^SYSCFGEX=\"${ATMODE}\",3fffffff,1,3,7fffffffffffffff,," ${DEVICE}
+                [ "${IFMODE}" != "oem" ] \
+                        && SENDATC ${DEVICE} "AT^SYSCFGEX=\"${ATMODE}\",3fffffff,2,4,7fffffffffffffff,,"
                 logger -t "ncm-fix[$$]" -p info "AT commands ended. Turning interface ${IFNAME} up"
-                [ -n "$(ifup ${IFNAME} 2>/dev/null)" ] && logger -t "ncm-fix[$$]" -p warning "Turning interface ${INTERFACE} up failed"
-        fi
+                [ -n "$(ifup ${IFNAME} 2>/dev/null)" ] \
+                        && logger -t "ncm-fix[$$]" -p warning "Turning interface ${INTERFACE} up failed"
+#       fi
 
 }
 
 CRONTAB() {
         if [ -e /etc/rc.d/S99ncm-fix ]; then
-                if [ ! -f /etc/crontabs/root ] || [ -z "$(sed -n "/\/etc\/init.d\/ncm-fix/p" /etc/crontabs/root)" ]; then
+                if [ -z "$(sed -n "/\/etc\/init.d\/ncm-fix/p" /etc/crontabs/root 2>/dev/null)" ]; then
+                        logger -t "ncm-fix[$$]" -p notice "Creating crontab rule and reloading the service"
                         echo "*/20      *       *       *       *       /etc/init.d/ncm-fix start" >> /etc/crontabs/root
-                        /etc/init.d/cron stop
-                        /etc/init.d/cron start
+                        /etc/init.d/cron reload
                 fi
         else
-                echo "$(sed "/\/etc\/init.d\/ncm-fix/d" /etc/crontabs/root)" >| /etc/crontabs/root
+                logger -t "ncm-fix[$$]" -p notice "Removing crontab rule and reloading the service"
+                echo "$(sed "/\/etc\/init.d\/ncm-fix/d" /etc/crontabs/root 2>/dev/null)" >| /etc/crontabs/root
+                /etc/init.d/cron reload
         fi
 }
 
@@ -127,14 +131,16 @@ start() {
 
         logger -t "ncm-fix[$$]" -p debug "Ping had ${P}0% of success"
 
-        if [ ${P} -eq 0 ]; then
+        if [ $P -eq 0 ]; then
                 logger -t "ncm-fix[$$]" -p warning "${IPPING} couldn't be pinged. Restarting ncm device"
-                BOOTNCM
+                BOOTNCM run
                 local N=0
                 while [ ${N} -lt 10 ]; do
                         sleep 3
                         P=$(PPING)
-                        [ ${P} -lt 2 ] && let N+=1 || break
+                        [ ${P} -lt 2 ] \
+                                && let N+=1 \
+                                || break
                 done
                 logger -t "ncm-fix[$$]" -p notice "New ping had ${P}0% of success"
         fi
@@ -148,6 +154,6 @@ stop() {
 }
 
 boot() {
-        sleep 10
+        sleep 20
         start
 }
